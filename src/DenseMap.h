@@ -97,7 +97,7 @@ namespace snx
         }
 
         template <typename... Args>
-        Type& emplace( Key const& key, Args&&... args )
+        Type& try_emplace( Key const& key, Args&&... args )
         {
             Type value{ std::forward<Args>( args )... };
 
@@ -105,7 +105,7 @@ namespace snx
         }
 
         template <typename... Args>
-        Type& emplace_or_assign( Key const& key, Args&&... args )
+        Type& emplace( Key const& key, Args&&... args )
         {
             Type value{ std::forward<Args>( args )... };
 
@@ -131,15 +131,14 @@ namespace snx
 
             //* Get list index of removed value
             size_t removedValueIndex{ keyToIndex_[key] };
-            size_t keptValueIndex{};
-            size_t size{ this->size() };
+            size_t valuesSize{ this->size() };
 
             //* Replace removed value with last value before popping (if more than one
             // value exists) to keep values contiguous
-            if ( size > 1 )
+            if ( valuesSize > 1 )
             {
                 //* Get index of (kept) last value that replaces removed value
-                keptValueIndex = size - 1;
+                size_t keptValueIndex{ valuesSize - 1 };
 
                 //* Get key of replacing/kept value
                 Key keptkey = indexToKey_[keptValueIndex];
