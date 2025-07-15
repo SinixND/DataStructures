@@ -1,6 +1,8 @@
 #ifndef IG20250710132744
 #define IG20250710132744
 
+//* https://opendsa-server.cs.vt.edu/ODSA/Books/Everything/html/KDtree.html
+
 #include "float2.h"
 #include <memory>
 
