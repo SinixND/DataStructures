@@ -9,42 +9,42 @@
 #include <memory>
 #include <vector>
 
-std::array<float2, 4> constexpr directions{
-    float2{ -1, -1 }, // NW
-    float2{ 1, -1 },  // NE
-    float2{ -1, 1 },  // SW
-    float2{ 1, 1 }    // SE
-};
-
-template <typename Type>
-struct NodePRQT
+namespace snx::PQRT
 {
-    std::vector<std::unique_ptr<NodePRQT<Type>>> children{};
+    std::array<float2, 4> constexpr directions{
+        float2{ -1, -1 }, // NW
+        float2{ 1, -1 },  // NE
+        float2{ -1, 1 },  // SW
+        float2{ 1, 1 }    // SE
+    };
 
-    AABB box{};
-    float2 valuePosition{};
-    Type value{};
-
-    NodePRQT()
+    template <typename Type>
+    struct NodePRQT
     {
-        children.reserve( 4 );
-    }
+        std::vector<std::unique_ptr<NodePRQT<Type>>> branches{};
 
-    NodePRQT(
-        AABB box,
-        float2 position,
-        Type value
-    )
-        : NodePRQT()
-    {
-        this->box = box;
-        this->valuePosition = position;
-        this->value = value;
-    }
-};
+        AABB box{};
+        float2 valuePosition{};
+        Type value{};
 
-namespace snx
-{
+        NodePRQT()
+        {
+            branches.reserve( 4 );
+        }
+
+        NodePRQT(
+            AABB box,
+            float2 position,
+            Type value
+        )
+            : NodePRQT()
+        {
+            this->box = box;
+            this->valuePosition = position;
+            this->value = value;
+        }
+    };
+
     /// Point Quad Tree
     template <typename Type>
     class PRQT
@@ -64,12 +64,12 @@ namespace snx
             root->value = value;
         }
 
-        void add(
+        void insert(
             Type value,
             float2 position
         )
         {
-            add(
+            insert(
                 value,
                 position,
                 root
@@ -77,12 +77,12 @@ namespace snx
         }
 
     private:
-        static bool hasChildren( std::unique_ptr<NodePRQT<Type>> const& node )
+        static bool hasBranches( std::unique_ptr<NodePRQT<Type>> const& node )
         {
-            return !node->children.empty();
+            return !node->branches.empty();
         }
 
-        void add(
+        void insert(
             Type value,
             float2 position,
             std::unique_ptr<NodePRQT<Type>>& node
@@ -101,10 +101,10 @@ namespace snx
                 dir |= 1 << 1; // S
             }
 
-            if ( !hasChildren( node ) ) // is leaf, has value
+            if ( !hasBranches( node ) ) // is leaf, has value
             {
                 //* Split leaf and insert old
-                node->children.resize( 4 );
+                node->branches.resize( 4 );
 
                 //* Calculate direction of existing position
                 int oldDir = 0; // NW
@@ -120,40 +120,40 @@ namespace snx
                 }
 
                 //* Add new leaf node for existing position and data
-                node->children[oldDir] = std::make_unique<NodePRQT<Type>>();
-                node->children[oldDir]->box = {
+                node->branches[oldDir] = std::make_unique<NodePRQT<Type>>();
+                node->branches[oldDir]->box = {
                     { node->box.center.x + directions[oldDir].x * ( node->box.dimensions.x / 4 ),
                       node->box.center.y + directions[oldDir].y * ( node->box.dimensions.y / 4 ) },
                     { node->box.dimensions.x / 2,
                       node->box.dimensions.y / 2 }
                 };
-                node->children[oldDir]->valuePosition = node->valuePosition;
-                node->children[oldDir]->value = node->value;
+                node->branches[oldDir]->valuePosition = node->valuePosition;
+                node->branches[oldDir]->value = node->value;
             }
 
-            //* If children exists in direction, descend
-            if ( node->children[dir] )
+            //* If branches exists in direction, descend
+            if ( node->branches[dir] )
             {
-                //* Check next children
-                add(
+                //* Check next branches
+                insert(
                     value,
                     position,
-                    node->children[dir]
+                    node->branches[dir]
                 );
 
                 return;
             }
 
             //* Add new leaf node for new position and data
-            node->children[dir] = std::make_unique<NodePRQT<Type>>();
-            node->children[dir]->box = {
+            node->branches[dir] = std::make_unique<NodePRQT<Type>>();
+            node->branches[dir]->box = {
                 { node->box.center.x + directions[dir].x * ( node->box.dimensions.x / 4 ),
                   node->box.center.y + directions[dir].y * ( node->box.dimensions.y / 4 ) },
                 { node->box.dimensions.x / 2,
                   node->box.dimensions.y / 2 }
             };
-            node->children[dir]->valuePosition = position;
-            node->children[dir]->value = value;
+            node->branches[dir]->valuePosition = position;
+            node->branches[dir]->value = value;
 
             return;
         }
