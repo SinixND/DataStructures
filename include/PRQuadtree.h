@@ -1,161 +1,189 @@
-#ifndef IG20250710132723
-#define IG20250710132723
+#ifndef IG20250717092941
+#define IG20250717092941
 
-//* https://opendsa-server.cs.vt.edu/ODSA/Books/CS3/html/PRquadtree.html
+//* https://lisyarus.github.io/blog/posts/building-a-quadtree.html
 
-#include "AABB.h"
-#include "float2.h"
-#include <array>
-#include <memory>
+#include "snxTypes.h"
 #include <vector>
 
-namespace snx::PQRT
+struct Node
 {
-    std::array<float2, 4> constexpr directions{
-        float2{ -1, -1 }, // NW
-        float2{ 1, -1 },  // NE
-        float2{ -1, 1 },  // SW
-        float2{ 1, 1 }    // SE
+    //* [y][x]
+    snx::Id children[2][2]{
+        { 0, 0 },
+        { 0, 0 }
     };
+    snx::Id dataId{ 0 };
+};
 
-    template <typename Type>
-    struct NodePRQT
-    {
-        std::vector<std::unique_ptr<NodePRQT<Type>>> branches{};
+template <typename Type>
+struct NodeData
+{
+    snx::Float2 position{};
+    Type value{};
+};
 
-        AABB box{};
-        float2 valuePosition{};
-        Type value{};
-
-        NodePRQT()
-        {
-            branches.reserve( 4 );
-        }
-
-        NodePRQT(
-            AABB box,
-            float2 position,
-            Type value
-        )
-            : NodePRQT()
-        {
-            this->box = box;
-            this->valuePosition = position;
-            this->value = value;
-        }
-    };
-
-    /// Point Quad Tree
+namespace snx
+{
     template <typename Type>
     class PRQT
     {
-        std::unique_ptr<NodePRQT<Type>> root{};
+        //* TODO: Remove for release
+    public:
+        std::vector<Node> nodes_{
+            Node{},
+            Node{}
+        };
+        std::vector<NodeData<Type>> data_{ NodeData<Type>{} };
+        AABB bbox_{};
+        Id root_{ 1 };
 
     public:
-        PRQT(
-            AABB box,
-            float2 position,
-            Type value
-        )
-            : root( std::make_unique<NodePRQT<Type>>() )
+        explicit PRQT( Float2 const& dimensions )
+            : bbox_( AABB{ { dimensions.x / 2, dimensions.y / 2 }, { dimensions.x, dimensions.y } } )
         {
-            root->box = box;
-            root->valuePosition = position;
-            root->value = value;
         }
 
         void insert(
-            Type value,
-            float2 position
+            Float2 const& position,
+            Type const& value
         )
         {
             insert(
-                value,
                 position,
-                root
+                value,
+                root_,
+                bbox_
             );
         }
 
     private:
-        static bool hasBranches( std::unique_ptr<NodePRQT<Type>> const& node )
+        bool hasChild(
+            Id parentNode,
+            Int2 quad
+        ) const
         {
-            return !node->branches.empty();
+            return nodes_[parentNode].children[quad.y][quad.x];
+        }
+
+        bool isBranch( Id node ) const
+        {
+            return nodes_[node].children[0][0]
+                   + nodes_[node].children[0][1]
+                   + nodes_[node].children[1][0]
+                   + nodes_[node].children[1][1];
+        }
+
+        bool hasData( Id node ) const
+        {
+            return nodes_[node].dataId;
+        }
+
+        static Int2 getQuadrant(
+            Float2 from,
+            Float2 to
+        )
+        {
+            Int2 quad{ 0, 0 }; // NW
+
+            if ( to.x > from.x )
+            {
+                quad.x = 1; // E
+            }
+
+            if ( to.y > from.y )
+            {
+                quad.y = 1; // S
+            }
+
+            return quad;
+        }
+
+        AABB getQuadrantBox(
+            AABB const& bbox,
+            Int2 quad
+        )
+        {
+            return AABB{
+                { bbox.center.x + ( ( ( quad.x * 2 ) - 1 ) * ( bbox.dimensions.x / 4 ) ),
+                  bbox.center.y + ( ( ( quad.y * 2 ) - 1 ) * ( bbox.dimensions.y / 4 ) ) },
+                { bbox.dimensions.x / 2,
+                  bbox.dimensions.y / 2 }
+            };
         }
 
         void insert(
-            Type value,
-            float2 position,
-            std::unique_ptr<NodePRQT<Type>>& node
+            Float2 const& position,
+            Type const& value,
+            Id node,
+            AABB const& bbox
         )
         {
-            //* Calculate direction of input position
-            int dir{ 0 }; // NW
+            Int2 quad{ getQuadrant(
+                bbox.center,
+                position
+            ) };
 
-            if ( position.x > node->box.center.x )
+            if ( hasChild(
+                     node,
+                     quad
+                 ) )
             {
-                dir |= 1 << 0; // E
-            }
-
-            if ( position.y > node->box.center.y )
-            {
-                dir |= 1 << 1; // S
-            }
-
-            if ( !hasBranches( node ) ) // is leaf, has value
-            {
-                //* Split leaf and insert old
-                node->branches.resize( 4 );
-
-                //* Calculate direction of existing position
-                int oldDir = 0; // NW
-
-                if ( node->valuePosition.x > node->box.center.x )
-                {
-                    oldDir |= 1 << 0; // E
-                }
-
-                if ( node->valuePosition.y > node->box.center.y )
-                {
-                    oldDir |= 1 << 1; // S
-                }
-
-                //* Add new leaf node for existing position and data
-                node->branches[oldDir] = std::make_unique<NodePRQT<Type>>();
-                node->branches[oldDir]->box = {
-                    { node->box.center.x + directions[oldDir].x * ( node->box.dimensions.x / 4 ),
-                      node->box.center.y + directions[oldDir].y * ( node->box.dimensions.y / 4 ) },
-                    { node->box.dimensions.x / 2,
-                      node->box.dimensions.y / 2 }
-                };
-                node->branches[oldDir]->valuePosition = node->valuePosition;
-                node->branches[oldDir]->value = node->value;
-            }
-
-            //* If branches exists in direction, descend
-            if ( node->branches[dir] )
-            {
-                //* Check next branches
+                //* Follow
                 insert(
-                    value,
                     position,
-                    node->branches[dir]
+                    value,
+                    nodes_[node].children[quad.y][quad.x],
+                    getQuadrantBox( bbox, quad )
                 );
 
                 return;
             }
 
-            //* Add new leaf node for new position and data
-            node->branches[dir] = std::make_unique<NodePRQT<Type>>();
-            node->branches[dir]->box = {
-                { node->box.center.x + directions[dir].x * ( node->box.dimensions.x / 4 ),
-                  node->box.center.y + directions[dir].y * ( node->box.dimensions.y / 4 ) },
-                { node->box.dimensions.x / 2,
-                  node->box.dimensions.y / 2 }
-            };
-            node->branches[dir]->valuePosition = position;
-            node->branches[dir]->value = value;
+            if ( isBranch( node ) )
+            {
+                //* Add new child with data
+                nodes_[node].children[quad.y][quad.x] = nodes_.size();
+                nodes_.emplace_back();
+                nodes_.back().dataId = data_.size();
+                data_.emplace_back(
+                    position,
+                    value
+                );
 
-            return;
+                return;
+            }
+
+            if ( hasData( node ) )
+            {
+                Int2 oldQuad{ getQuadrant(
+                    bbox.center,
+                    data_[nodes_[node].dataId].position
+                ) };
+
+                //* Move old data to new child
+                nodes_[node].children[oldQuad.y][oldQuad.x] = nodes_.size();
+                nodes_.emplace_back();
+                nodes_.back().dataId = nodes_[node].dataId;
+
+                nodes_[node].dataId = 0;
+
+                insert(
+                    position,
+                    value,
+                    node,
+                    bbox
+                );
+
+                return;
+            }
+
+            //* Add data
+            nodes_[node].dataId = data_.size();
+            data_.emplace_back(
+                position,
+                value
+            );
         }
     };
 }
