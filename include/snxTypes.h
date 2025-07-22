@@ -1,6 +1,7 @@
 #ifndef IG20250710132640
 #define IG20250710132640
 
+#include <bitset>
 #include <cstdint>
 // #include <cstddef>
 
@@ -22,7 +23,7 @@ namespace snx
     struct AABB
     {
         Float2 center;
-        Float2 dimensions;
+        Float2 halfSize;
     };
 }
 #endif

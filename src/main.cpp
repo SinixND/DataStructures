@@ -14,13 +14,13 @@ void renderNode(
 {
     DrawRectangleLinesEx(
         Rectangle{
-            bbox.center.x - ( bbox.dimensions.x / 2 ),
-            bbox.center.y - ( bbox.dimensions.y / 2 ),
-            bbox.dimensions.x,
-            bbox.dimensions.x,
+            bbox.center.x - bbox.halfSize.x,
+            bbox.center.y - bbox.halfSize.y,
+            2 * bbox.halfSize.x,
+            2 * bbox.halfSize.x,
         },
         1,
-        WHITE
+        GRAY
     );
 
     for ( int y{ 0 }; y < 2; ++y )
@@ -33,10 +33,10 @@ void renderNode(
                     tree,
                     tree.nodes_[node].children[y][x],
                     snx::AABB{
-                        { bbox.center.x + ( ( ( x * 2 ) - 1 ) * ( bbox.dimensions.x / 4 ) ),
-                          bbox.center.y + ( ( ( y * 2 ) - 1 ) * ( bbox.dimensions.y / 4 ) ) },
-                        { bbox.dimensions.x / 2,
-                          bbox.dimensions.y / 2 }
+                        { bbox.center.x + ( ( ( x * 2 ) - 1 ) * ( bbox.halfSize.x / 2 ) ),
+                          bbox.center.y + ( ( ( y * 2 ) - 1 ) * ( bbox.halfSize.y / 2 ) ) },
+                        { bbox.halfSize.x / 2,
+                          bbox.halfSize.y / 2 }
                     }
                 );
             }
@@ -64,38 +64,56 @@ void renderTree( snx::PRQT<int> tree )
 int main()
 {
     snx::RNG::seed( 1 );
-    const int screenWidth = 512;
-    const int screenHeight = 512;
+    const int screenWidth = 1000;
+    const int screenHeight = 1000;
 
 #if defined( GUI )
     InitWindow( screenWidth, screenHeight, "raylib [core] example - basic window" );
 
-    SetTargetFPS( 60 ); // Set our game to run at 60 frames-per-second
+    SetTargetFPS( 300 ); // Set our game to run at 60 frames-per-second
 #endif
 
     snx::PRQT<int> qt{
         snx::Float2{ screenWidth, screenHeight }
     };
 
-    for ( size_t n{ 1 }; n < 20; ++n )
-    {
-        qt.insert(
-            snx::Float2{
-                snx::RNG::random( 0, screenWidth * 10E03 ) / 10E03f,
-                snx::RNG::random( 0, screenHeight * 10E03 ) / 10E03f
-            },
-            n
-        );
-    }
+    // for ( size_t n{ 1 }; n < 200; ++n )
+    // {
+    //     qt.insert(
+    //         snx::Float2{
+    //             snx::RNG::random( 0, screenWidth * 10E03 ) / 10E03f,
+    //             snx::RNG::random( 0, screenHeight * 10E03 ) / 10E03f
+    //         },
+    //         n
+    //     );
+    // }
+
+    qt.insert( { 300, 300 }, 1 );
+    qt.insert( { 350, 300 }, 2 );
+    qt.insert( { 800, 700 }, 3 );
+    qt.insert( { 900, 600 }, 4 );
+
+    Vector2 target{ -100, -100 };
+    snx::Float2 nearestNeighbor{ -100, -100 };
 
 #if defined( GUI )
     while ( !WindowShouldClose() ) // Detect window close button or ESC key
     {
         BeginDrawing();
 
-        ClearBackground( BLACK );
+        DrawFPS( 10, 10 );
 
         renderTree( qt );
+        if ( IsMouseButtonDown( MOUSE_LEFT_BUTTON ) )
+        {
+            ClearBackground( BLACK );
+            target = GetMousePosition();
+
+            nearestNeighbor = qt.getNearestNeighbor( { target.x, target.y } );
+
+            DrawCircleV( target, 3, PURPLE );
+            DrawCircleV( { nearestNeighbor.x, nearestNeighbor.y }, 5, GREEN );
+        }
 
         EndDrawing();
     }
