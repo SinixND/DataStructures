@@ -88,6 +88,9 @@ int main()
         );
     }
 
+    Float2 nearestNeighbor = qt.nearestNeighbor({0,0});
+    printf("Nearest neighbor to {0,0}: {%.3f,%.3f}", nearestNeighbor.x, nearestNeighbor.y);
+
 #if defined( GUI )
     while ( !WindowShouldClose() ) // Detect window close button or ESC key
     {

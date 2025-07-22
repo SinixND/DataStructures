@@ -28,8 +28,9 @@ namespace snx
             Type value{};
         };
 
-        //* TODO: Remove for release
+#if defined( GUI )
     public:
+#endif
         std::vector<Node> nodes_{
             Node{},
             Node{}
@@ -54,6 +55,17 @@ namespace snx
                 value,
                 root_,
                 bbox_
+            );
+        }
+
+        Type nearestNeighbor(Float2 const& target)
+        {
+            float distance{bbox_.dimensions.x + bbox_.dimensions.y};
+
+            return nearestNeighbor(
+                target,
+                root_,
+                distance
             );
         }
 
@@ -235,6 +247,27 @@ namespace snx
                 { position,
                   value }
             );
+        }
+
+        bool findNode()
+        {
+
+        }
+
+        Type nearestNeighbor(
+            Float2 const& target,
+            Id node,
+            AABB const& bbox,
+            float& distance
+        )
+        {
+            //* Find query target node
+            // if (findNode()) -> bool // !child
+            //* Found node, find adjacent Bbox
+            // checkChildren() 
+            //*if found: update distance, valueId
+            //*if not found: checkChildren()
+
         }
     };
 }
