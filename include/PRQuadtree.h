@@ -5,7 +5,6 @@
 
 #include "snxMath.h"
 #include <algorithm>
-#include <cstdlib>
 #include <raylib.h>
 
 #define GUI
@@ -25,7 +24,10 @@ namespace snx
                 { 0, 0 },
                 { 0, 0 }
             };
-            snx::Id dataId{ 0 };
+
+            snx::Id dataId{
+                0
+            };
         };
 
         struct Data
@@ -34,12 +36,10 @@ namespace snx
             Type value{};
         };
 
-        struct Target
+        struct NearestNeighbor
         {
-            float closestDistanceSquared{};
-            Float2 nearestNeighbor{};
-            AABB bbox{};
-            bool wasFound{ false };
+            float distanceSquared{};
+            Float2 position{};
         };
 
 #if defined( GUI )
@@ -49,13 +49,22 @@ namespace snx
             Node{},
             Node{}
         };
-        std::vector<Data> data_{ Data{} };
+
+        std::vector<Data> data_{
+            Data{}
+        };
+
         AABB bbox_{};
         Id root_{ 1 };
 
     public:
         explicit PRQT( Float2 const& dimensions )
-            : bbox_( AABB{ { dimensions.x / 2, dimensions.y / 2 }, { dimensions.x / 2, dimensions.y / 2 } } )
+            : bbox_(
+                  AABB{
+                      { dimensions.x / 2, dimensions.y / 2 },
+                      { dimensions.x / 2, dimensions.y / 2 }
+                  }
+              )
         {
         }
 
@@ -72,20 +81,24 @@ namespace snx
             );
         }
 
-        Float2 getNearestNeighbor( Float2 const& targetPosition )
+        //* https://ericandrewlewis.github.io/how-a-quadtree-works/
+        Float2 getNearestNeighbor(
+            Float2 const& targetPosition
+        )
         {
-            Target target{
-                ( 4 * bbox_.halfSize.x * bbox_.halfSize.x ) + ( 4 * bbox_.halfSize.y * bbox_.halfSize.y )
+            NearestNeighbor nearestNeighbor{
+                ( 4 * bbox_.halfSize.x * bbox_.halfSize.x )
+                + ( 4 * bbox_.halfSize.y * bbox_.halfSize.y )
             };
 
             getNearestNeighbor(
                 targetPosition,
                 root_,
                 bbox_,
-                target
+                nearestNeighbor
             );
 
-            return target.nearestNeighbor;
+            return nearestNeighbor.position;
         }
 
     private:
@@ -94,9 +107,6 @@ namespace snx
             Color color
         )
         {
-#if defined( DEBUG )
-            // BeginDrawing();
-#endif
             DrawRectangleLinesEx(
                 Rectangle{
                     bbox.center.x - bbox.halfSize.x,
@@ -104,12 +114,9 @@ namespace snx
                     2 * bbox.halfSize.x,
                     2 * bbox.halfSize.y
                 },
-                5,
+                1,
                 color
             );
-#if defined( DEBUG )
-            // EndDrawing();
-#endif
         }
 
         bool hasChild(
@@ -120,15 +127,16 @@ namespace snx
             return nodes_[parentNode].children[quad.y][quad.x];
         }
 
-        bool isBranch( Id node ) const
+        bool isBranch(
+            Id node
+        ) const
         {
-            return nodes_[node].children[0][0]
-                   + nodes_[node].children[0][1]
-                   + nodes_[node].children[1][0]
-                   + nodes_[node].children[1][1];
+            return nodes_[node].children[0][0] + nodes_[node].children[0][1] + nodes_[node].children[1][0] + nodes_[node].children[1][1];
         }
 
-        bool hasData( Id node ) const
+        bool hasData(
+            Id node
+        ) const
         {
             return nodes_[node].dataId;
         }
@@ -159,7 +167,6 @@ namespace snx
         )
         {
             return AABB{
-
                 { bbox.center.x + ( ( ( quad.x * 2 ) - 1 ) * ( bbox.halfSize.x / 2 ) ),
                   bbox.center.y + ( ( ( quad.y * 2 ) - 1 ) * ( bbox.halfSize.y / 2 ) ) },
                 { bbox.halfSize.x / 2,
@@ -176,7 +183,9 @@ namespace snx
             nodes_.emplace_back();
         }
 
-        void insertData( Data data )
+        void insertData(
+            Data data
+        )
         {
             nodes_.back().dataId = data_.size();
             data_.emplace_back(
@@ -196,7 +205,9 @@ namespace snx
                 quad
             );
 
-            insertData( data );
+            insertData(
+                data
+            );
         }
 
         void moveToChild(
@@ -210,7 +221,6 @@ namespace snx
             );
 
             nodes_.back().dataId = nodes_[node].dataId;
-
             nodes_[node].dataId = 0;
         }
 
@@ -225,7 +235,6 @@ namespace snx
             if (
                 data_[nodes_[node].dataId].position.x == position.x
                 && data_[nodes_[node].dataId].position.y == position.y
-
             )
             {
                 return;
@@ -246,7 +255,10 @@ namespace snx
                     position,
                     value,
                     nodes_[node].children[quad.y][quad.x],
-                    getQuadrantBox( bbox, quad )
+                    getQuadrantBox(
+                        bbox,
+                        quad
+                    )
                 );
 
                 return;
@@ -257,8 +269,7 @@ namespace snx
                 insertToChild(
                     node,
                     quad,
-                    { position,
-                      value }
+                    { position, value }
                 );
 
                 return;
@@ -266,10 +277,12 @@ namespace snx
 
             if ( hasData( node ) )
             {
-                Int2 oldQuad{ getQuadrant(
-                    bbox.center,
-                    data_[nodes_[node].dataId].position
-                ) };
+                Int2 oldQuad{
+                    getQuadrant(
+                        bbox.center,
+                        data_[nodes_[node].dataId].position
+                    )
+                };
 
                 moveToChild(
                     node,
@@ -286,10 +299,7 @@ namespace snx
                 return;
             }
 
-            insertData(
-                { position,
-                  value }
-            );
+            insertData( { position, value } );
         }
 
         void updateDistanceSquared(
@@ -299,9 +309,7 @@ namespace snx
         )
         {
             distanceSquaredIO = std::min(
-                //* Previous closest distance
                 distanceSquaredIO,
-                //* New closest distance
                 getDistanceSquared(
                     to,
                     from
@@ -309,45 +317,54 @@ namespace snx
             );
         }
 
-        void cycleQuad( Int2& quad )
-        {
-            Float2 tempQuad{ 1.0f * quad.x, 1.0f * quad.y };
-
-            tempQuad.x -= .5f;
-            tempQuad.y -= .5f;
-
-            quad.x = static_cast<int>( .5f + ( 1 * tempQuad.y ) );
-            quad.y = static_cast<int>( .5f + ( -1 * tempQuad.x ) );
-
-            return;
-        }
-
-        bool isAdjacent(
-            AABB const& bbox1,
-            AABB const& bbox2
+        bool isCloser(
+            AABB const& bbox,
+            Float2 const& position,
+            float currentNearestDistanceSquared
         )
         {
-            return !( std::abs( bbox1.center.x - bbox2.center.x ) > bbox1.halfSize.x + bbox2.halfSize.x )
-                   && !( std::abs( bbox1.center.y - bbox2.center.y ) > bbox1.halfSize.y + bbox2.halfSize.y )
-                //    && !( std::abs( bbox1.center.x - bbox2.center.x ) < std::abs( bbox1.halfSize.x - bbox2.halfSize.x ) )
-                //    && !( std::abs( bbox1.center.y - bbox2.center.y ) < std::abs( bbox1.halfSize.y - bbox2.halfSize.y ) )
-                ;
+            //* https://stackoverflow.com/a/18157551/21874203
+            float dx{
+                std::max(
+                    ( bbox.center.x - bbox.halfSize.x ) - position.x,
+                    std::max(
+                        0.f,
+                        position.x - ( bbox.center.x + bbox.halfSize.x )
+                    )
+                )
+            };
+
+            float dy{
+                std::max(
+                    ( bbox.center.y - bbox.halfSize.y ) - position.y,
+                    std::max(
+                        0.f,
+                        position.y - ( bbox.center.y + bbox.halfSize.y )
+                    )
+                )
+            };
+
+            float dSquared = dx * dx + dy * dy;
+
+            return dSquared < currentNearestDistanceSquared;
         }
 
         void getNearestNeighbor(
             Float2 const& targetPosition,
             Id node,
             AABB const& currentBbox,
-            Target& target
+            NearestNeighbor& nearestNeighbor
         )
         {
             //* Find query target node
-            Int2 targetQuad{ getQuadrant(
-                currentBbox.center,
-                targetPosition
-            ) };
+            Int2 targetQuad{
+                getQuadrant(
+                    currentBbox.center,
+                    targetPosition
+                )
+            };
 
-            //* Follow children
+            //* Follow target
             if ( hasChild(
                      node,
                      targetQuad
@@ -356,82 +373,80 @@ namespace snx
                 getNearestNeighbor(
                     targetPosition,
                     nodes_[node].children[targetQuad.y][targetQuad.x],
-                    getQuadrantBox( currentBbox, targetQuad ),
-                    target
+                    getQuadrantBox(
+                        currentBbox,
+                        targetQuad
+                    ),
+                    nearestNeighbor
                 );
             }
 
             //* Deepest node found
-            if ( 
-                !target.wasFound,
-            )
+            //* Update nearest neighbor if data available
+            if ( hasData( node ) )
             {
-                //* Found target
-                if(hasData( node )
-                || !isBranch(node))
-                {
-                    target.bbox = currentBbox;
-                }
-                else 
-                {
-                    target.bbox = getQuadrantBox( currentBbox, targetQuad );
-                }
-
-                target.wasFound = true;
-                drawBbox( target.bbox, PURPLE );
-            }
-
-            //* Is leaf?
-            if (
-                hasData( node )
-                // && ( target.closestDistanceSquared > getDistanceSquared( targetPosition, data_[nodes_[node].dataId].position ) )
-            )
-            {
+#if defined( GUI )
                 drawBbox(
                     currentBbox,
                     BLUE
                 );
-                if ( target.closestDistanceSquared > getDistanceSquared( targetPosition, data_[nodes_[node].dataId].position ) )
+#endif
+
+                if ( nearestNeighbor.distanceSquared > getDistanceSquared(
+                         targetPosition,
+                         data_[nodes_[node].dataId].position
+                     ) )
                 {
                     updateDistanceSquared(
-                        target.closestDistanceSquared,
+                        nearestNeighbor.distanceSquared,
                         targetPosition,
                         data_[nodes_[node].dataId].position
                     );
 
-                    target.nearestNeighbor = data_[nodes_[node].dataId].position;
+                    nearestNeighbor.position = data_[nodes_[node].dataId].position;
                 }
             }
 
-            //* Check siblings
-            if ( !isBranch( node ) )
+            if ( isBranch( node ) )
             {
-                return;
-            }
-
-            Int2 sibling{ targetQuad };
-            for ( int i{ 0 }; i < 3; ++i )
-            {
-                cycleQuad( sibling );
-                if (
-                    isAdjacent(
-                        getQuadrantBox( currentBbox, sibling ),
-                        target.bbox
-                    )
-                )
+                //* Check children if their box can be closer than nearestNeighbor
+                for ( int y{ 0 }; y < 2; ++y )
                 {
-                    // drawBbox(
-                    //     getQuadrantBox( currentBbox, sibling ),
-                    //     RED
-                    // );
-                    getNearestNeighbor(
-                        targetPosition,
-                        nodes_[node].children[sibling.y][sibling.x],
-                        getQuadrantBox( currentBbox, sibling ),
-                        target
-                    );
+                    for ( int x{ 0 }; x < 2; ++x )
+                    {
+                        //* Skip child if
+                        if (
+                            !nodes_[node].children[y][x]
+                            || !isCloser(
+
+                                getQuadrantBox(
+
+                                    currentBbox,
+                                    { x, y }
+                                ),
+                                targetPosition,
+                                nearestNeighbor.distanceSquared
+                            )
+                            || ( x == targetQuad.x
+                                 && y == targetQuad.y )
+                        )
+                        {
+                            continue;
+                        }
+
+                        getNearestNeighbor(
+                            targetPosition,
+                            nodes_[node].children[y][x],
+                            getQuadrantBox(
+                                currentBbox,
+                                { x, y }
+                            ),
+                            nearestNeighbor
+                        );
+                    }
                 }
             }
+            return;
         }
     };
 }

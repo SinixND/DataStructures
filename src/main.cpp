@@ -6,6 +6,11 @@
 
 #define GUI
 
+int constexpr SCREEN_WIDTH = 1000;
+int constexpr SCREEN_HEIGHT = 1000;
+int constexpr NODES = 20;
+int constexpr FPS_TARGET = 300;
+
 void renderNode(
     snx::PRQT<int>& tree,
     snx::Id node,
@@ -64,34 +69,31 @@ void renderTree( snx::PRQT<int> tree )
 int main()
 {
     snx::RNG::seed( 1 );
-    const int screenWidth = 1000;
-    const int screenHeight = 1000;
-
 #if defined( GUI )
-    InitWindow( screenWidth, screenHeight, "raylib [core] example - basic window" );
+    InitWindow( SCREEN_WIDTH, SCREEN_HEIGHT, "raylib [core] example - basic window" );
 
-    SetTargetFPS( 300 ); // Set our game to run at 60 frames-per-second
+    SetTargetFPS( FPS_TARGET ); // Set our game to run at 60 frames-per-second
 #endif
 
     snx::PRQT<int> qt{
-        snx::Float2{ screenWidth, screenHeight }
+        snx::Float2{ SCREEN_WIDTH, SCREEN_HEIGHT }
     };
 
-    // for ( size_t n{ 1 }; n < 200; ++n )
-    // {
-    //     qt.insert(
-    //         snx::Float2{
-    //             snx::RNG::random( 0, screenWidth * 10E03 ) / 10E03f,
-    //             snx::RNG::random( 0, screenHeight * 10E03 ) / 10E03f
-    //         },
-    //         n
-    //     );
-    // }
+    for ( size_t n{ 1 }; n < NODES; ++n )
+    {
+        qt.insert(
+            snx::Float2{
+                snx::RNG::random( 0, SCREEN_WIDTH * 10E03 ) / 10E03f,
+                snx::RNG::random( 0, SCREEN_HEIGHT * 10E03 ) / 10E03f
+            },
+            n
+        );
+    }
 
-    qt.insert( { 300, 300 }, 1 );
-    qt.insert( { 350, 300 }, 2 );
-    qt.insert( { 800, 700 }, 3 );
-    qt.insert( { 900, 600 }, 4 );
+    // qt.insert( { 60, 60 }, 1 );
+    // qt.insert( { 70, 60 }, 2 );
+    // qt.insert( { 160, 140 }, 3 );
+    // qt.insert( { 180, 120 }, 4 );
 
     Vector2 target{ -100, -100 };
     snx::Float2 nearestNeighbor{ -100, -100 };
@@ -100,19 +102,19 @@ int main()
     while ( !WindowShouldClose() ) // Detect window close button or ESC key
     {
         BeginDrawing();
+        ClearBackground( BLACK );
 
         DrawFPS( 10, 10 );
 
-        renderTree( qt );
+        // renderTree( qt );
         if ( IsMouseButtonDown( MOUSE_LEFT_BUTTON ) )
         {
-            ClearBackground( BLACK );
             target = GetMousePosition();
 
             nearestNeighbor = qt.getNearestNeighbor( { target.x, target.y } );
 
             DrawCircleV( target, 3, PURPLE );
-            DrawCircleV( { nearestNeighbor.x, nearestNeighbor.y }, 5, GREEN );
+            DrawCircleV( { nearestNeighbor.x, nearestNeighbor.y }, 3, GREEN );
         }
 
         EndDrawing();

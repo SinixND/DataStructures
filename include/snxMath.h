@@ -12,6 +12,9 @@ namespace snx
 
     inline float getDistanceSquared( Float2 to, Float2 from )
     {
+        [[maybe_unused]]
+        auto dbg = ( to.x - from.x ) * ( to.x - from.x )
+                   + ( to.y - from.y ) * ( to.y - from.y );
         return ( to.x - from.x ) * ( to.x - from.x )
                + ( to.y - from.y ) * ( to.y - from.y );
     }
