@@ -1,13 +1,12 @@
 #include "PRQuadtree.h"
 #include "RNG.h"
 #include "snxTypes.h"
-#include <cstdio>
 #include <raylib.h>
 
 #define GUI
 
-int constexpr SCREEN_WIDTH = 1000;
-int constexpr SCREEN_HEIGHT = 1000;
+int constexpr SCREEN_WIDTH = 1024;
+int constexpr SCREEN_HEIGHT = 1024;
 int constexpr NODES = 20;
 int constexpr FPS_TARGET = 300;
 
@@ -24,29 +23,9 @@ void renderNode(
             2 * bbox.halfSize.x,
             2 * bbox.halfSize.x,
         },
-        1,
+        2,
         GRAY
     );
-
-    for ( int y{ 0 }; y < 2; ++y )
-    {
-        for ( int x{ 0 }; x < 2; ++x )
-        {
-            if ( tree.nodes_[node].children[y][x] )
-            {
-                renderNode(
-                    tree,
-                    tree.nodes_[node].children[y][x],
-                    snx::AABB{
-                        { bbox.center.x + ( ( ( x * 2 ) - 1 ) * ( bbox.halfSize.x / 2 ) ),
-                          bbox.center.y + ( ( ( y * 2 ) - 1 ) * ( bbox.halfSize.y / 2 ) ) },
-                        { bbox.halfSize.x / 2,
-                          bbox.halfSize.y / 2 }
-                    }
-                );
-            }
-        }
-    }
 
     if ( tree.nodes_[node].dataId )
     {
@@ -58,6 +37,28 @@ void renderNode(
             2,
             RED
         );
+    }
+
+    for ( int y{ 0 }; y < 2; ++y )
+    {
+        for ( int x{ 0 }; x < 2; ++x )
+        {
+            if ( !tree.nodes_[node].children[y][x] )
+            {
+                continue;
+            }
+
+            renderNode(
+                tree,
+                tree.nodes_[node].children[y][x],
+                snx::AABB{
+                    { bbox.center.x + ( ( ( x * 2 ) - 1 ) * ( bbox.halfSize.x / 2 ) ),
+                      bbox.center.y + ( ( ( y * 2 ) - 1 ) * ( bbox.halfSize.y / 2 ) ) },
+                    { bbox.halfSize.x / 2,
+                      bbox.halfSize.y / 2 }
+                }
+            );
+        }
     }
 }
 
@@ -106,15 +107,15 @@ int main()
 
         DrawFPS( 10, 10 );
 
-        // renderTree( qt );
+        renderTree( qt );
         if ( IsMouseButtonDown( MOUSE_LEFT_BUTTON ) )
         {
             target = GetMousePosition();
 
             nearestNeighbor = qt.getNearestNeighbor( { target.x, target.y } );
 
-            DrawCircleV( target, 3, PURPLE );
-            DrawCircleV( { nearestNeighbor.x, nearestNeighbor.y }, 3, GREEN );
+            DrawCircleV( target, 4, PURPLE );
+            DrawCircleV( { nearestNeighbor.x, nearestNeighbor.y }, 4, GREEN );
         }
 
         EndDrawing();
