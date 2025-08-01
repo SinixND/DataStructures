@@ -85,6 +85,20 @@ namespace snx
             );
         }
 
+        //* https://youtu.be/Glp7THUpGow?si=p8M3jZT4WqrCgwju&t=267
+        KDPosition<2> getNearestNeighbor( KDPosition<2> const& targetPosition )
+        {
+            KDPosition<2> nearestNeighbor{ 0, 0 };
+
+            getNearestNeighbor(
+                nearestNeighbor,
+                targetPosition,
+                root_
+            );
+
+            return nearestNeighbor;
+        }
+
     private:
         bool hasData( Id const node ) const
         {
@@ -136,7 +150,6 @@ namespace snx
         {
             size_t const dimension{ level % K };
 
-            //* smaller or greater than parent
             size_t const branch{ getBranch(
                 newPosition[dimension],
                 data_[nodes_[parentNode].dataId].position[dimension]
@@ -163,6 +176,14 @@ namespace snx
 
                 insertData( { newPosition, newValue } );
             }
+        }
+
+        void getNearestNeighbor(
+            [[maybe_unused]] KDPosition<2>& nearestNeighbor,
+            [[maybe_unused]] KDPosition<2> const targetPosition,
+            [[maybe_unused]] Id const node
+        )
+        {
         }
     };
 }
