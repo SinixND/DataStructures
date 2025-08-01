@@ -11,9 +11,9 @@ int constexpr NODES = 20;
 int constexpr FPS_TARGET = 300;
 
 void renderNode(
-    snx::PRQT<int>& tree,
-    snx::Id node,
-    snx::AABB bbox
+    snx::PRQT<int> const& tree,
+    snx::Id const node,
+    snx::AABB const bbox
 )
 {
     DrawRectangleLinesEx(
@@ -43,14 +43,14 @@ void renderNode(
     {
         for ( int x{ 0 }; x < 2; ++x )
         {
-            if ( !tree.nodes_[node].children[y][x] )
+            if ( !tree.nodes_[node].quadrants[y][x] )
             {
                 continue;
             }
 
             renderNode(
                 tree,
-                tree.nodes_[node].children[y][x],
+                tree.nodes_[node].quadrants[y][x],
                 snx::AABB{
                     { bbox.center.x + ( ( ( x * 2 ) - 1 ) * ( bbox.halfSize.x / 2 ) ),
                       bbox.center.y + ( ( ( y * 2 ) - 1 ) * ( bbox.halfSize.y / 2 ) ) },
@@ -62,7 +62,7 @@ void renderNode(
     }
 }
 
-void renderTree( snx::PRQT<int> tree )
+void renderTree( snx::PRQT<int> const& tree )
 {
     renderNode( tree, tree.root_, tree.bbox_ );
 }
@@ -98,10 +98,24 @@ int main()
 
     Vector2 target{ -100, -100 };
     snx::Float2 nearestNeighbor{ -100, -100 };
+    // size_t n{ 0 };
 
 #if defined( GUI )
     while ( !WindowShouldClose() ) // Detect window close button or ESC key
     {
+        // if ( n < NODES + 1 )
+        // {
+        //     tree.insert(
+        //         snx::Float2{
+        //             snx::RNG::random( 0, SCREEN_WIDTH * 10E03 ) / 10E03f,
+        //             snx::RNG::random( 0, SCREEN_HEIGHT * 10E03 ) / 10E03f
+        //         },
+        //         n
+        //     );
+
+        //     ++n;
+        // }
+
         BeginDrawing();
         ClearBackground( BLACK );
 

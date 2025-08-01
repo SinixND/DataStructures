@@ -19,7 +19,7 @@ namespace snx
         struct Node
         {
             //* [y][x]
-            Id children[2][2]{
+            Id quadrants[2][2]{
                 { 0, 0 },
                 { 0, 0 }
             };
@@ -88,9 +88,7 @@ namespace snx
         }
 
         //* https://ericandrewlewis.github.io/how-a-quadtree-works/
-        Float2 getNearestNeighbor(
-            Float2 const& targetPosition
-        )
+        Float2 getNearestNeighbor( Float2 const& targetPosition )
         {
             NearestNeighbor nearestNeighbor{
                 ( 4 * bbox_.halfSize.x * bbox_.halfSize.x )
@@ -108,91 +106,70 @@ namespace snx
         }
 
     private:
-        void drawBbox(
-            AABB const& bbox,
-            Color color
-        )
-        {
-            DrawRectangleLinesEx(
-                Rectangle{
-                    bbox.center.x - bbox.halfSize.x,
-                    bbox.center.y - bbox.halfSize.y,
-                    2 * bbox.halfSize.x,
-                    2 * bbox.halfSize.y
-                },
-                1,
-                color
-            );
-        }
-
-        bool hasChild(
-            Id parentNode,
-            Int2 quad
+        bool hasQuadrant(
+            Id const parentNode,
+            Int2 const quadrant
         ) const
         {
-            return nodes_[parentNode].children[quad.y][quad.x];
+            return nodes_[parentNode].quadrants[quadrant.y][quadrant.x];
         }
 
-        bool isBranch(
-            Id node
-        ) const
+        bool isParent( Id const node ) const
         {
-            return nodes_[node].children[0][0]
-                   + nodes_[node].children[0][1]
-                   + nodes_[node].children[1][0]
-                   + nodes_[node].children[1][1];
+            return nodes_[node].quadrants[0][0]
+                   + nodes_[node].quadrants[0][1]
+                   + nodes_[node].quadrants[1][0]
+                   + nodes_[node].quadrants[1][1];
         }
 
-        bool hasData(
-            Id node
-        ) const
+        bool hasData( Id const node ) const
         {
             return nodes_[node].dataId;
         }
 
         static Int2 getQuadrant(
-            Float2 parentBbox,
-            Float2 targetPosition
+            Float2 const parentBbox,
+            Float2 const targetPosition
         )
         {
-            Int2 quad{ 0, 0 }; // NW
+            Int2 quadrant{ 0, 0 }; // NW
 
             if ( targetPosition.x > parentBbox.x )
             {
-                quad.x = 1; // E
+                quadrant.x = 1; // E
             }
 
             if ( targetPosition.y > parentBbox.y )
             {
-                quad.y = 1; // S
+                quadrant.y = 1; // S
             }
 
-            return quad;
+            return quadrant;
         }
 
-        AABB getQuadrantBox(
+        static AABB getQuadrantBox(
             AABB const& parentBbox,
-            Int2 childQuad
+            Int2 const quadrant
         )
         {
             return AABB{
-                { parentBbox.center.x + ( ( ( childQuad.x * 2 ) - 1 ) * ( parentBbox.halfSize.x / 2 ) ),
-                  parentBbox.center.y + ( ( ( childQuad.y * 2 ) - 1 ) * ( parentBbox.halfSize.y / 2 ) ) },
+                { parentBbox.center.x + ( ( ( quadrant.x * 2 ) - 1 ) * ( parentBbox.halfSize.x / 2 ) ),
+                  parentBbox.center.y + ( ( ( quadrant.y * 2 ) - 1 ) * ( parentBbox.halfSize.y / 2 ) ) },
                 { parentBbox.halfSize.x / 2,
                   parentBbox.halfSize.y / 2 }
             };
         }
 
         void insertNode(
-            Id node,
-            Int2 quad
+            Id const node,
+            Int2 const quadrant
         )
         {
-            nodes_[node].children[quad.y][quad.x] = nodes_.size();
+            nodes_[node].quadrants[quadrant.y][quadrant.x] = nodes_.size();
             nodes_.emplace_back();
         }
 
-        void insertData( Data data )
+        void insertData( Data const data )
         {
             nodes_.back().dataId = data_.size();
             data_.emplace_back(
@@ -201,28 +178,28 @@ namespace snx
             );
         }
 
-        void insertToChild(
-            Id node,
-            Int2 quad,
-            Data data
+        void insertToQuadrant(
+            Id const node,
+            Int2 const newQuadrant,
+            Data const data
         )
         {
             insertNode(
                 node,
-                quad
+                newQuadrant
             );
 
             insertData( data );
         }
 
-        void moveToChild(
-            Id node,
-            Int2 oldQuad
+        void moveToQuadrant(
+            Id const node,
+            Int2 const newQuadrant
         )
         {
             insertNode(
                 node,
-                oldQuad
+                newQuadrant
             );
 
             nodes_.back().dataId = nodes_[node].dataId;
@@ -232,39 +209,39 @@ namespace snx
         void insert(
             Float2 const& position,
             Type const& value,
-            Id node,
+            Id const node,
             AABB const& bbox
         )
         {
-            Int2 quad{ getQuadrant(
+            Int2 targetQuadrant{ getQuadrant(
                 bbox.center,
                 position
             ) };
 
-            if ( hasChild(
+            if ( hasQuadrant(
                      node,
-                     quad
+                     targetQuadrant
                  ) )
             {
-                //* Follow child
+                //* Follow quadrant
                 insert(
                     position,
                     value,
-                    nodes_[node].children[quad.y][quad.x],
+                    nodes_[node].quadrants[targetQuadrant.y][targetQuadrant.x],
                     getQuadrantBox(
                         bbox,
-                        quad
+                        targetQuadrant
                     )
                 );
 
                 return;
             }
 
-            if ( isBranch( node ) )
+            if ( isParent( node ) )
             {
-                insertToChild(
+                insertToQuadrant(
                     node,
-                    quad,
+                    targetQuadrant,
                     { position, value }
                 );
 
@@ -273,16 +250,16 @@ namespace snx
 
             if ( hasData( node ) )
             {
-                Int2 oldQuad{
+                Int2 newQuadrant{
                     getQuadrant(
                         bbox.center,
                         data_[nodes_[node].dataId].position
                     )
                 };
 
-                moveToChild(
+                moveToQuadrant(
                     node,
-                    oldQuad
+                    newQuadrant
                 );
 
                 insert(
@@ -298,10 +275,10 @@ namespace snx
             insertData( { position, value } );
         }
 
-        bool isCloser(
+        static bool isCloser(
             AABB const& bbox,
             Float2 const& position,
-            float currentNearestDistanceSquared
+            float const currentNearestDistanceSquared
         )
         {
             //* https://stackoverflow.com/a/18157551/21874203
@@ -330,20 +307,20 @@ namespace snx
             return distanceSquared < currentNearestDistanceSquared;
         }
 
-        void checkChild(
+        void checkQuadrant(
             NearestNeighbor& nearestNeighborIO,
             Float2 const& targetPosition,
-            Int2 const& childQuad,
-            Id parentNode,
-            AABB const& childBbox
+            Int2 const& quadrant,
+            Id const parentNode,
+            AABB const& quadrantBbox
         )
         {
-            if ( hasChild(
+            if ( hasQuadrant(
                      parentNode,
-                     childQuad
+                     quadrant
                  )
                  && isCloser(
-                     childBbox,
+                     quadrantBbox,
                      targetPosition,
                      nearestNeighborIO.distanceSquared
                  ) )
@@ -351,8 +328,8 @@ namespace snx
                 getNearestNeighbor(
                     nearestNeighborIO,
                     targetPosition,
-                    nodes_[parentNode].children[childQuad.y][childQuad.x],
-                    childBbox
+                    nodes_[parentNode].quadrants[quadrant.y][quadrant.x],
+                    quadrantBbox
                 );
             }
         }
@@ -360,8 +337,8 @@ namespace snx
         void updateNearestNeighbor(
             NearestNeighbor& nearestNeighborIO,
             Float2 const& targetPosition,
-            Id leafNode
-        )
+            Id const leafNode
+        ) const
         {
             float newDistanceSquared{
                 getDistanceSquared(
@@ -380,48 +357,48 @@ namespace snx
             nearestNeighborIO.position = data_[nodes_[leafNode].dataId].position;
         }
 
-        void cycleQuad( Int2& childQuad )
+        static void cycleQuadrant( Int2& quadrant )
         {
-            Float2 tempQuad{
-                1.f * childQuad.x,
-                1.f * childQuad.y
+            Float2 tempQuadrant{
+                1.f * quadrant.x,
+                1.f * quadrant.y
             };
 
-            tempQuad.x -= .5f;
-            tempQuad.y -= .5f;
+            tempQuadrant.x -= .5f;
+            tempQuadrant.y -= .5f;
 
             //* Rotate 90 deg CCW
             //* [ 0 -1 ]
             //* [ 1  0 ]
-            childQuad.x = static_cast<int>( .5f + ( 1 * tempQuad.y ) );
-            childQuad.y = static_cast<int>( .5f + ( -1 * tempQuad.x ) );
+            quadrant.x = static_cast<int>( .5f + ( 1 * tempQuadrant.y ) );
+            quadrant.y = static_cast<int>( .5f + ( -1 * tempQuadrant.x ) );
 
             return;
         }
 
         void checkSiblings(
             NearestNeighbor& nearestNeighborIO,
-            Int2 const& firstChildQuad,
-            Id parentNode,
+            Int2 const& firstQuadrantQuadrant,
+            Id const parentNode,
             AABB const& parentBbox,
             Float2 const& targetPosition
         )
         {
             //* Check remaining siblings if their
             //* box can be closer than nearestNeighbor
-            Int2 childQuad{ firstChildQuad };
+            Int2 quadrant{ firstQuadrantQuadrant };
 
             for ( int i{ 0 }; i < 3; ++i )
             {
-                cycleQuad( childQuad );
-                checkChild(
+                cycleQuadrant( quadrant );
+                checkQuadrant(
                     nearestNeighborIO,
                     targetPosition,
-                    childQuad,
+                    quadrant,
                     parentNode,
                     getQuadrantBox(
                         parentBbox,
-                        childQuad
+                        quadrant
                     )
                 );
             }
@@ -430,27 +407,27 @@ namespace snx
         void getNearestNeighbor(
             NearestNeighbor& nearestNeighborIO,
             Float2 const& targetPosition,
-            Id node,
+            Id const node,
             AABB const& nodeBbox
         )
         {
-            //* Find quad in direction of target
-            Int2 targetQuad{
+            //* Find quadrant in direction of target
+            Int2 targetQuadrant{
                 getQuadrant(
                     nodeBbox.center,
                     targetPosition
                 )
             };
 
-            //* Check first child at targetQuad
-            checkChild(
+            //* Check first quadrant at targetQuadrant
+            checkQuadrant(
                 nearestNeighborIO,
                 targetPosition,
-                targetQuad,
+                targetQuadrant,
                 node,
                 getQuadrantBox(
                     nodeBbox,
-                    targetQuad
+                    targetQuadrant
                 )
             );
 
@@ -467,7 +444,7 @@ namespace snx
 
             checkSiblings(
                 nearestNeighborIO,
-                targetQuad,
+                targetQuadrant,
                 node,
                 nodeBbox,
                 targetPosition
