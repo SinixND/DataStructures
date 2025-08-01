@@ -71,6 +71,15 @@ namespace snx
             Type const& value
         )
         {
+            //* Check for equal position
+            if (
+                data_[nodes_[node].dataId].position.x == position.x
+                && data_[nodes_[node].dataId].position.y == position.y
+            )
+            {
+                return;
+            }
+
             insert(
                 position,
                 value,
@@ -184,9 +193,7 @@ namespace snx
             nodes_.emplace_back();
         }
 
-        void insertData(
-            Data data
-        )
+        void insertData( Data data)
         {
             nodes_.back().dataId = data_.size();
             data_.emplace_back(
@@ -206,9 +213,7 @@ namespace snx
                 quad
             );
 
-            insertData(
-                data
-            );
+            insertData( data);
         }
 
         void moveToChild(
@@ -232,15 +237,6 @@ namespace snx
             AABB const& bbox
         )
         {
-            //* Check for equal position
-            if (
-                data_[nodes_[node].dataId].position.x == position.x
-                && data_[nodes_[node].dataId].position.y == position.y
-            )
-            {
-                return;
-            }
-
             Int2 quad{ getQuadrant(
                 bbox.center,
                 position
