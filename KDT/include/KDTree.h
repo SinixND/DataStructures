@@ -4,18 +4,22 @@
 //* https://opendsa-server.cs.vt.edu/ODSA/Books/CS3/html/KDtree.html
 //* https://www.geeksforgeeks.org/cpp/kd-trees-in-cpp/
 
-    template<typename K>
-    using KDPosition = std::array<float, K>;
+#include "snxTypes.h"
+#include <array>
+
+#define GUI
 
 namespace snx
 {
+    template <size_t K>
+    using KDPosition = std::array<float, K>;
+
     template <size_t K, typename Type>
     class KDT
     {
         struct Node
         {
-            Id children[2]
-            {
+            Id children[2]{
                 0,
                 0
             };
@@ -29,8 +33,8 @@ namespace snx
             Type value{};
         };
 
-        size_t const LEFT{0};
-        size_t const RIGHT{1};
+        size_t const LEFT{ 0 };
+        size_t const RIGHT{ 1 };
 
 #if defined( GUI )
     public:
@@ -48,24 +52,27 @@ namespace snx
 
     public:
         void insert(
-            Float2 const& position,
+            KDPosition<K> const& position,
             Type const& value
         )
         {
             //* Check for equal position
-            bool isEqual{true};
-            for (size_t k{0}; k < K) 
+            bool isEqual{ true };
+            for ( size_t k{ 0 }; k < K; ++k )
             {
-                if ( data_[nodes_[node].dataId].position[k] != position[k])
+                if ( data_[nodes_[root_].dataId].position[k] != position[k] )
                 {
                     isEqual = false;
                     break;
                 }
             }
 
-            if (isEqual) return;
+            if ( isEqual )
+            {
+                return;
+            }
 
-            if (!hasData(root_))
+            if ( !hasData( root_ ) )
             {
                 insertData( { position, value } );
 
@@ -78,15 +85,7 @@ namespace snx
                 root_,
                 1
             );
-
-        };
-
-        Float2 getNearestNeighbor(
-            Float2 const& targetPosition
-        )
-        {
-
-        };
+        }
 
     private:
         bool hasData(
@@ -96,7 +95,7 @@ namespace snx
             return nodes_[node].dataId;
         }
 
-        void insertData( Data data)
+        void insertData( Data data )
         {
             nodes_.back().dataId = data_.size();
             data_.emplace_back(
@@ -106,14 +105,14 @@ namespace snx
         }
 
         size_t getDirecion(
-                float newCoordinate, 
-                float oldCoordinate
-            )
-            {
-                return (newCoordinate<oldCoordinate) 
-                    ? LEFT 
-                    : RIGHT;
-            }
+            float newCoordinate,
+            float oldCoordinate
+        )
+        {
+            return ( newCoordinate < oldCoordinate )
+                       ? LEFT
+                       : RIGHT;
+        }
 
         bool hasChild(
             Id parentNode,
@@ -133,19 +132,19 @@ namespace snx
         }
 
         void insert(
-            Float2 const& position,
+            KDPosition<K> const& position,
             Type const& value,
             Id node,
             size_t level
         )
         {
-            size_t dimension{level % K};
-            size_t direction{getDirecion(
-                position[k],
-                data_[nodes_[node].dataId].position[k]
-            )};
+            size_t dimension{ level % K };
+            size_t direction{ getDirecion(
+                position[dimension],
+                data_[nodes_[node].dataId].position[dimension]
+            ) };
 
-            if (hasChild(direction))
+            if ( hasChild( node, direction ) )
             {
                 insert(
                     position,
@@ -154,18 +153,13 @@ namespace snx
                     ++level
                 );
             }
-            else 
+            else
             {
-                insertNode(node, direction);
+                insertNode( node, direction );
                 insertData( { position, value } );
             }
-        };
-
-        Float2 getNearestNeighbor()
-        {
-
-        };
-    }
+        }
+    };
 }
 
 #endif

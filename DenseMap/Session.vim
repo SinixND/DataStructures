@@ -13,13 +13,12 @@ if &shortmess =~ 'A'
 else
   set shortmess=aoO
 endif
-badd +1 src/main.cpp
-badd +1 include/PRQuadtree.h
+badd +119 src/main.cpp
+badd +42 include/KDTree.h
 argglobal
 %argdel
-edit include/PRQuadtree.h
+edit include/KDTree.h
 argglobal
-balt src/main.cpp
 setlocal foldmethod=indent
 setlocal foldexpr=vimtex#fold#level(v:lnum)
 setlocal foldmarker={{{,}}}
@@ -28,11 +27,11 @@ setlocal foldlevel=99
 setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal nofoldenable
-let s:l = 1 - ((0 * winheight(0) + 17) / 34)
+let s:l = 42 - ((16 * winheight(0) + 17) / 34)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 1
+keepjumps 42
 normal! 0
 tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'

@@ -72,8 +72,8 @@ namespace snx
         {
             //* Check for equal position
             if (
-                data_[nodes_[node].dataId].position.x == position.x
-                && data_[nodes_[node].dataId].position.y == position.y
+                data_[nodes_[root_].dataId].position.x == position.x
+                && data_[nodes_[root_].dataId].position.y == position.y
             )
             {
                 return;
@@ -192,7 +192,7 @@ namespace snx
             nodes_.emplace_back();
         }
 
-        void insertData( Data data)
+        void insertData( Data data )
         {
             nodes_.back().dataId = data_.size();
             data_.emplace_back(
@@ -212,7 +212,7 @@ namespace snx
                 quad
             );
 
-            insertData( data);
+            insertData( data );
         }
 
         void moveToChild(

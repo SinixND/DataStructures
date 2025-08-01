@@ -1,12 +1,9 @@
-#include "PRQuadtree.h"
+#include "PRQuadTree.h"
 #include "RNG.h"
 #include "snxTypes.h"
 #include <raylib.h>
 
 #define GUI
-//* Define tree type
-#define PRQT
-#define KDT
 
 int constexpr SCREEN_WIDTH = 1024;
 int constexpr SCREEN_HEIGHT = 1024;
@@ -79,14 +76,9 @@ int main()
     SetTargetFPS( FPS_TARGET ); // Set our game to run at 60 frames-per-second
 #endif
 
-#if defined(PQRT)
     snx::PRQT<int> tree{
         snx::Float2{ SCREEN_WIDTH, SCREEN_HEIGHT }
     };
-#endif
-#if defined(KDT)
-    snx::KDT<2> tree{};
-#endif
 
     for ( size_t n{ 1 }; n < NODES; ++n )
     {
@@ -105,9 +97,7 @@ int main()
     // tree.insert( { 180, 120 }, 4 );
 
     Vector2 target{ -100, -100 };
-#if defined(PQRT)
     snx::Float2 nearestNeighbor{ -100, -100 };
-#endif
 
 #if defined( GUI )
     while ( !WindowShouldClose() ) // Detect window close button or ESC key
@@ -122,14 +112,10 @@ int main()
         {
             target = GetMousePosition();
 
-#if defined(PQRT)
             nearestNeighbor = tree.getNearestNeighbor( { target.x, target.y } );
-#endif
 
             DrawCircleV( target, 4, PURPLE );
-#if defined(PQRT)
             DrawCircleV( { nearestNeighbor.x, nearestNeighbor.y }, 4, GREEN );
-#endif
         }
 
         EndDrawing();
