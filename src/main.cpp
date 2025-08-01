@@ -4,6 +4,9 @@
 #include <raylib.h>
 
 #define GUI
+//* Define tree type
+#define PRQT
+#define KDT
 
 int constexpr SCREEN_WIDTH = 1024;
 int constexpr SCREEN_HEIGHT = 1024;
@@ -76,13 +79,18 @@ int main()
     SetTargetFPS( FPS_TARGET ); // Set our game to run at 60 frames-per-second
 #endif
 
-    snx::PRQT<int> qt{
+#if defined(PQRT)
+    snx::PRQT<int> tree{
         snx::Float2{ SCREEN_WIDTH, SCREEN_HEIGHT }
     };
+#endif
+#if defined(KDT)
+    snx::KDT<2> tree{};
+#endif
 
     for ( size_t n{ 1 }; n < NODES; ++n )
     {
-        qt.insert(
+        tree.insert(
             snx::Float2{
                 snx::RNG::random( 0, SCREEN_WIDTH * 10E03 ) / 10E03f,
                 snx::RNG::random( 0, SCREEN_HEIGHT * 10E03 ) / 10E03f
@@ -91,13 +99,15 @@ int main()
         );
     }
 
-    // qt.insert( { 60, 60 }, 1 );
-    // qt.insert( { 70, 60 }, 2 );
-    // qt.insert( { 160, 140 }, 3 );
-    // qt.insert( { 180, 120 }, 4 );
+    // tree.insert( { 60, 60 }, 1 );
+    // tree.insert( { 70, 60 }, 2 );
+    // tree.insert( { 160, 140 }, 3 );
+    // tree.insert( { 180, 120 }, 4 );
 
     Vector2 target{ -100, -100 };
+#if defined(PQRT)
     snx::Float2 nearestNeighbor{ -100, -100 };
+#endif
 
 #if defined( GUI )
     while ( !WindowShouldClose() ) // Detect window close button or ESC key
@@ -107,15 +117,19 @@ int main()
 
         DrawFPS( 10, 10 );
 
-        renderTree( qt );
+        renderTree( tree );
         if ( IsMouseButtonDown( MOUSE_LEFT_BUTTON ) )
         {
             target = GetMousePosition();
 
-            nearestNeighbor = qt.getNearestNeighbor( { target.x, target.y } );
+#if defined(PQRT)
+            nearestNeighbor = tree.getNearestNeighbor( { target.x, target.y } );
+#endif
 
             DrawCircleV( target, 4, PURPLE );
+#if defined(PQRT)
             DrawCircleV( { nearestNeighbor.x, nearestNeighbor.y }, 4, GREEN );
+#endif
         }
 
         EndDrawing();
