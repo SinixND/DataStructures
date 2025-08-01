@@ -4,13 +4,12 @@
 //* https://lisyarus.github.io/blog/posts/building-a-quadtree.html
 
 #include "snxMath.h"
+#include "snxTypes.h"
 #include <algorithm>
 #include <raylib.h>
+#include <vector>
 
 #define GUI
-
-#include "snxTypes.h"
-#include <vector>
 
 namespace snx
 {
