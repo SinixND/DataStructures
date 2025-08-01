@@ -33,9 +33,6 @@ namespace snx
             Type value{};
         };
 
-        size_t const LEFT{ 0 };
-        size_t const RIGHT{ 1 };
-
 #if defined( GUI )
     public:
 #endif
@@ -110,8 +107,8 @@ namespace snx
         )
         {
             return ( newCoordinate < oldCoordinate )
-                       ? LEFT
-                       : RIGHT;
+                       ? 0  // less than
+                       : 1; // greater than or equal
         }
 
         bool hasChild(

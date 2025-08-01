@@ -12,7 +12,9 @@ int constexpr FPS_TARGET = 300;
 
 void renderNode(
     snx::KDT<2, int> const& tree,
-    snx::Id node
+    snx::Id node,
+    size_t level,
+    Rectangle nodeBox
 )
 {
     if ( tree.nodes_[node].dataId )
@@ -25,25 +27,78 @@ void renderNode(
             2,
             RED
         );
+
+        DrawRectangleLinesEx(
+            nodeBox,
+            1,
+            GRAY
+        );
     }
 
-    for ( int k{ 0 }; k < 2; ++k )
+    size_t k{ level % 2 }; // x or y
+
+    for ( int i{ 0 }; i < 2; ++i ) // smaller or greater
     {
-        if ( !tree.nodes_[node].children[k] )
+        if ( !tree.nodes_[node].children[i] )
         {
             continue;
         }
 
+        if ( !i ) // smaller
+        {
+            if ( k ) // x
+            {
+                nodeBox.width = tree.data_[tree.nodes_[tree.nodes_[node].children[i]].dataId].position[k] - nodeBox.x;
+            }
+            else // y
+            {
+                nodeBox.height = tree.data_[tree.nodes_[tree.nodes_[node].children[i]].dataId].position[k] - nodeBox.y;
+            }
+        }
+        else // right
+        {
+            if ( k ) // x
+            {
+                nodeBox.width = nodeBox.x + nodeBox.width - tree.data_[tree.nodes_[tree.nodes_[node].children[i]].dataId].position[k];
+
+                nodeBox.x = tree.data_[tree.nodes_[tree.nodes_[node].children[i]].dataId].position[k];
+            }
+            else // y
+            {
+                nodeBox.height = nodeBox.y + nodeBox.height - tree.data_[tree.nodes_[tree.nodes_[node].children[i]].dataId].position[k];
+
+                nodeBox.y = tree.data_[tree.nodes_[tree.nodes_[node].children[i]].dataId].position[k];
+            }
+        }
+
         renderNode(
             tree,
-            tree.nodes_[node].children[k]
+            tree.nodes_[node].children[k],
+            ++level,
+            nodeBox
         );
     }
 }
 
-void renderTree( snx::KDT<2, int> const& tree )
+void renderTree(
+    snx::KDT<2, int> const& tree,
+    int screenWidth,
+    int screenHeight
+)
 {
-    renderNode( tree, tree.root_ );
+    Rectangle rootBox{
+        0,
+        0,
+        (float)screenWidth,
+        (float)screenHeight
+    };
+
+    renderNode(
+        tree,
+        tree.root_,
+        0,
+        rootBox
+    );
 }
 
 int main()
@@ -83,7 +138,12 @@ int main()
 
         DrawFPS( 10, 10 );
 
-        renderTree( tree );
+        renderTree(
+            tree,
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT
+        );
+
         if ( IsMouseButtonDown( MOUSE_LEFT_BUTTON ) )
         {
             target = GetMousePosition();
