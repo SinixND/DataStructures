@@ -1,14 +1,13 @@
 #include "KDTree.h"
 #include "RNG.h"
-#include "snxTypes.h"
 #include <cstddef>
 #include <raylib.h>
 
 #define GUI
 
-int constexpr SCREEN_WIDTH = 1024;
-int constexpr SCREEN_HEIGHT = 1024;
-[[maybe_unused]] int constexpr NODES = 20;
+int constexpr SCREEN_WIDTH = 512;
+int constexpr SCREEN_HEIGHT = 512;
+int constexpr NODES = 20;
 int constexpr FPS_TARGET = 300;
 
 void renderNode(
@@ -25,7 +24,7 @@ void renderNode(
                 tree.data_[tree.nodes_[node].dataId].position[0],
                 tree.data_[tree.nodes_[node].dataId].position[1]
             },
-            2,
+            5,
             RED
         );
 
@@ -121,7 +120,7 @@ int main()
     // tree.insert( { 180, 120 }, 4 );
 
     Vector2 target{ -100, -100 };
-
+    snx::Id nearestNeighbor{ 0 };
     size_t n{ 0 };
 
 #if defined( GUI )
@@ -155,7 +154,21 @@ int main()
         {
             target = GetMousePosition();
 
-            DrawCircleV( target, 4, PURPLE );
+            nearestNeighbor = tree.getNearestNeighbor(
+                { target.x, target.y }
+            );
+
+            DrawCircleV(
+                target,
+                4,
+                PURPLE
+            );
+            DrawCircleV(
+                { tree.data_[nearestNeighbor].position[0],
+                  tree.data_[nearestNeighbor].position[1] },
+                4,
+                GREEN
+            );
         }
 
         EndDrawing();

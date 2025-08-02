@@ -4,14 +4,19 @@
 //* https://opendsa-server.cs.vt.edu/ODSA/Books/CS3/html/KDhtml
 //* https://www.geeksforgeeks.org/cpp/kd-trees-in-cpp/
 
-#include "snxTypes.h"
 #include <array>
+#include <cstdint>
+#include <cstdlib>
+#include <raylib.h>
 #include <vector>
 
 #define GUI
 
 namespace snx
 {
+    using Id = std::uint32_t;
+    // using Id = size_t;
+
     template <size_t K>
     using KDPosition = std::array<float, K>;
 
@@ -34,13 +39,20 @@ namespace snx
             Type value{};
         };
 
+        struct NearestNeighbor
+        {
+            float distanceFactor{ 0 }; // "1 / (distance ^ 2)": The greater the distance, the smaller the factor
+            Id dataId{ 0 };
+        };
+
 #if defined( GUI )
     public:
 #endif
-        std::vector<Node> nodes_{
-            Node{}, // unused: 0 == invalid
-            Node{}  // root
-        };
+        std::vector<Node>
+            nodes_{
+                Node{}, // unused: 0 == invalid
+                Node{}  // root
+            };
 
         std::vector<Data> data_{
             Data{} // unused: 0 == invalid
@@ -86,17 +98,18 @@ namespace snx
         }
 
         //* https://youtu.be/Glp7THUpGow?si=p8M3jZT4WqrCgwju&t=267
-        KDPosition<2> getNearestNeighbor( KDPosition<2> const& targetPosition )
+        Id getNearestNeighbor( KDPosition<2> const& targetPosition )
         {
-            KDPosition<2> nearestNeighbor{ 0, 0 };
+            NearestNeighbor nearestNeighbor{};
 
             getNearestNeighbor(
                 nearestNeighbor,
                 targetPosition,
-                root_
+                root_,
+                0
             );
 
-            return nearestNeighbor;
+            return nearestNeighbor.dataId;
         }
 
     private:
@@ -145,11 +158,9 @@ namespace snx
             KDPosition<K> const& newPosition,
             Type const& newValue,
             Id const parentNode,
-            size_t const level
+            size_t const dimension
         )
         {
-            size_t const dimension{ level % K };
-
             size_t const branch{ getBranch(
                 newPosition[dimension],
                 data_[nodes_[parentNode].dataId].position[dimension]
@@ -164,7 +175,7 @@ namespace snx
                     newPosition,
                     newValue,
                     nodes_[parentNode].branches[branch],
-                    level + 1
+                    ( dimension + 1 ) % K
                 );
             }
             else
@@ -178,12 +189,103 @@ namespace snx
             }
         }
 
+        float getDistanceFactor( KDPosition<K> const& to, KDPosition<K> const& from ) const
+        {
+            return 1
+                   / ( ( to[0] - from[0] ) * ( to[0] - from[0] )
+                       + ( to[1] - from[1] ) * ( to[1] - from[1] ) );
+        }
+
+        void updateNearestNeighbor(
+            NearestNeighbor& nearestNeighborIO,
+            KDPosition<K> const& targetPosition,
+            Id const node
+        ) const
+        {
+            float newDistanceFactor{ getDistanceFactor(
+                targetPosition,
+                data_[nodes_[node].dataId].position
+            ) };
+
+            if ( newDistanceFactor < nearestNeighborIO.distanceFactor )
+            {
+                return;
+            }
+
+            nearestNeighborIO.distanceFactor = newDistanceFactor;
+
+            nearestNeighborIO.dataId = nodes_[node].dataId;
+        }
+
+        bool isBranchCloser(
+            Id const node,
+            size_t const dimension,
+            KDPosition<2> const& targetPosition,
+            float const oldDistanceFactor
+        ) const
+        {
+            float branchBorder{
+                data_[nodes_[node].dataId].position[dimension]
+            };
+
+            float branchDistance{ branchBorder - targetPosition[dimension] };
+            float branchDistanceFactor{ 1 / ( branchDistance * branchDistance ) };
+
+            return branchDistanceFactor > oldDistanceFactor;
+        }
+
         void getNearestNeighbor(
-            [[maybe_unused]] KDPosition<2>& nearestNeighbor,
-            [[maybe_unused]] KDPosition<2> const targetPosition,
-            [[maybe_unused]] Id const node
+            NearestNeighbor& nearestNeighborIO,
+            KDPosition<2> const& targetPosition,
+            Id const node,
+            size_t const dimension
         )
         {
+            size_t branch{ getBranch(
+                targetPosition[dimension],
+                data_[nodes_[node].dataId].position[dimension]
+            ) };
+
+            if ( hasBranch( node, branch ) )
+            {
+                getNearestNeighbor(
+                    nearestNeighborIO,
+                    targetPosition,
+                    nodes_[node].branches[branch],
+                    ( dimension + 1 ) % K
+                );
+            }
+
+            //* Deepest node found
+            updateNearestNeighbor(
+                nearestNeighborIO,
+                targetPosition,
+                node
+            );
+
+            //* Check other branch
+            if (
+                hasBranch(
+                    node,
+                    branch
+                )
+                && isBranchCloser(
+                    node,
+                    dimension,
+                    targetPosition,
+                    nearestNeighborIO.distanceFactor
+                )
+            )
+            {
+                branch = ( branch + 1 ) % 2;
+
+                getNearestNeighbor(
+                    nearestNeighborIO,
+                    targetPosition,
+                    nodes_[node].branches[branch],
+                    ( dimension + 1 ) % K
+                );
+            }
         }
     };
 }
