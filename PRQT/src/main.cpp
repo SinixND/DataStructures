@@ -1,13 +1,12 @@
 #include "PRQuadTree.h"
 #include "RNG.h"
-#include "snxTypes.h"
 #include <raylib.h>
 
 #define GUI
 
 int constexpr SCREEN_WIDTH = 1024;
 int constexpr SCREEN_HEIGHT = 1024;
-int constexpr NODES = 20;
+int constexpr NODES = 2000;
 int constexpr FPS_TARGET = 300;
 
 void renderNode(
@@ -80,41 +79,30 @@ int main()
         snx::Float2{ SCREEN_WIDTH, SCREEN_HEIGHT }
     };
 
-    for ( size_t n{ 1 }; n < NODES; ++n )
-    {
-        tree.insert(
-            snx::Float2{
-                snx::RNG::random( 0, SCREEN_WIDTH * 10E03 ) / 10E03f,
-                snx::RNG::random( 0, SCREEN_HEIGHT * 10E03 ) / 10E03f
-            },
-            n
-        );
-    }
-
     // tree.insert( { 60, 60 }, 1 );
     // tree.insert( { 70, 60 }, 2 );
     // tree.insert( { 160, 140 }, 3 );
     // tree.insert( { 180, 120 }, 4 );
 
-    Vector2 target{ -100, -100 };
-    snx::Float2 nearestNeighbor{ -100, -100 };
-    // size_t n{ 0 };
+    Vector2 target{ -1, -1 }; // Outside of screen
+    snx::Id nearestNeighbor{ 0 };
+    size_t n{ 0 };
 
 #if defined( GUI )
     while ( !WindowShouldClose() ) // Detect window close button or ESC key
     {
-        // if ( n < NODES + 1 )
-        // {
-        //     tree.insert(
-        //         snx::Float2{
-        //             snx::RNG::random( 0, SCREEN_WIDTH * 10E03 ) / 10E03f,
-        //             snx::RNG::random( 0, SCREEN_HEIGHT * 10E03 ) / 10E03f
-        //         },
-        //         n
-        //     );
+        if ( n < NODES + 1 )
+        {
+            tree.insert(
+                snx::Float2{
+                    snx::RNG::random( 0, SCREEN_WIDTH * 10E03 ) / 10E03f,
+                    snx::RNG::random( 0, SCREEN_HEIGHT * 10E03 ) / 10E03f
+                },
+                n
+            );
 
-        //     ++n;
-        // }
+            ++n;
+        }
 
         BeginDrawing();
         ClearBackground( BLACK );
@@ -126,10 +114,21 @@ int main()
         {
             target = GetMousePosition();
 
-            nearestNeighbor = tree.getNearestNeighbor( { target.x, target.y } );
+            nearestNeighbor = tree.getNearestNeighbor(
+                { target.x, target.y }
+            );
 
-            DrawCircleV( target, 4, PURPLE );
-            DrawCircleV( { nearestNeighbor.x, nearestNeighbor.y }, 4, GREEN );
+            DrawCircleV(
+                target,
+                4,
+                PURPLE
+            );
+            DrawCircleV(
+                { tree.data_[nearestNeighbor].position.x,
+                  tree.data_[nearestNeighbor].position.y },
+                4,
+                GREEN
+            );
         }
 
         EndDrawing();

@@ -3,9 +3,8 @@
 
 //* https://lisyarus.github.io/blog/posts/building-a-quadtree.html
 
-#include "snxMath.h"
-#include "snxTypes.h"
 #include <algorithm>
+#include <cstdint>
 #include <raylib.h>
 #include <vector>
 
@@ -13,6 +12,25 @@
 
 namespace snx
 {
+    using Id = std::uint32_t;
+    // using Id = size_t;
+
+    struct Int2
+    {
+        int x, y;
+    };
+
+    struct Float2
+    {
+        float x, y;
+    };
+
+    struct AABB
+    {
+        Float2 center;
+        Float2 halfSize;
+    };
+
     template <typename Type>
     class PRQT
     {
@@ -35,8 +53,8 @@ namespace snx
 
         struct NearestNeighbor
         {
-            float distanceSquared{};
-            Float2 position{};
+            float distanceFactor{ 0 }; // "1 / (distance ^ 2)": The greater the distance, the smaller the factor
+            Id dataId{ 0 };
         };
 
 #if defined( GUI )
@@ -88,12 +106,9 @@ namespace snx
         }
 
         //* https://ericandrewlewis.github.io/how-a-quadtree-works/
-        Float2 getNearestNeighbor( Float2 const& targetPosition )
+        Id getNearestNeighbor( Float2 const& targetPosition )
         {
-            NearestNeighbor nearestNeighbor{
-                ( 4 * bbox_.halfSize.x * bbox_.halfSize.x )
-                + ( 4 * bbox_.halfSize.y * bbox_.halfSize.y )
-            };
+            NearestNeighbor nearestNeighbor{};
 
             getNearestNeighbor(
                 nearestNeighbor,
@@ -102,7 +117,7 @@ namespace snx
                 bbox_
             );
 
-            return nearestNeighbor.position;
+            return nearestNeighbor.dataId;
         }
 
     private:
@@ -278,7 +293,7 @@ namespace snx
         static bool isCloser(
             AABB const& bbox,
             Float2 const& position,
-            float const currentNearestDistanceSquared
+            float const oldDistanceFactor
         )
         {
             //* https://stackoverflow.com/a/18157551/21874203
@@ -302,9 +317,9 @@ namespace snx
                 )
             };
 
-            float distanceSquared = ( dx * dx ) + ( dy * dy );
+            float distanceFactor = 1 / ( ( dx * dx ) + ( dy * dy ) );
 
-            return distanceSquared < currentNearestDistanceSquared;
+            return distanceFactor > oldDistanceFactor;
         }
 
         void checkQuadrant(
@@ -322,7 +337,7 @@ namespace snx
                  && isCloser(
                      quadrantBbox,
                      targetPosition,
-                     nearestNeighborIO.distanceSquared
+                     nearestNeighborIO.distanceFactor
                  ) )
             {
                 getNearestNeighbor(
@@ -334,27 +349,32 @@ namespace snx
             }
         }
 
+        float getDistanceFactor( Float2 const& to, Float2 const& from ) const
+        {
+            return 1
+                   / ( ( to.x - from.x ) * ( to.x - from.x )
+                       + ( to.y - from.y ) * ( to.y - from.y ) );
+        }
+
         void updateNearestNeighbor(
             NearestNeighbor& nearestNeighborIO,
             Float2 const& targetPosition,
             Id const leafNode
         ) const
         {
-            float newDistanceSquared{
-                getDistanceSquared(
-                    targetPosition,
-                    data_[nodes_[leafNode].dataId].position
-                )
-            };
+            float newDistanceFactor{ getDistanceFactor(
+                targetPosition,
+                data_[nodes_[leafNode].dataId].position
+            ) };
 
-            if ( newDistanceSquared > nearestNeighborIO.distanceSquared )
+            if ( newDistanceFactor < nearestNeighborIO.distanceFactor )
             {
                 return;
             }
 
-            nearestNeighborIO.distanceSquared = newDistanceSquared;
+            nearestNeighborIO.distanceFactor = newDistanceFactor;
 
-            nearestNeighborIO.position = data_[nodes_[leafNode].dataId].position;
+            nearestNeighborIO.dataId = nodes_[leafNode].dataId;
         }
 
         static void cycleQuadrant( Int2& quadrant )
