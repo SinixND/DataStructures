@@ -5,9 +5,9 @@
 
 #define GUI
 
-int constexpr SCREEN_WIDTH = 512;
-int constexpr SCREEN_HEIGHT = 512;
-int constexpr NODES = 20;
+int constexpr SCREEN_WIDTH = 256;
+int constexpr SCREEN_HEIGHT = 256;
+size_t constexpr NODES = 100;
 int constexpr FPS_TARGET = 300;
 
 void renderNode(
@@ -120,7 +120,6 @@ int main()
     // tree.insert( { 180, 120 }, 4 );
 
     Vector2 target{ -100, -100 };
-    snx::Id nearestNeighbor{ 0 };
     size_t n{ 0 };
 
 #if defined( GUI )
@@ -154,21 +153,26 @@ int main()
         {
             target = GetMousePosition();
 
-            nearestNeighbor = tree.getNearestNeighbor(
+            auto kNearestNeighbors{ tree.findKNN(
+                5,
                 { target.x, target.y }
-            );
+            ) };
 
             DrawCircleV(
                 target,
                 4,
                 PURPLE
             );
-            DrawCircleV(
-                { tree.data_[nearestNeighbor].position[0],
-                  tree.data_[nearestNeighbor].position[1] },
-                4,
-                GREEN
-            );
+
+            for ( auto nbr : kNearestNeighbors )
+            {
+                DrawCircleV(
+                    { tree.data_[nbr.dataId].position[0],
+                      tree.data_[nbr.dataId].position[1] },
+                    4,
+                    GREEN
+                );
+            }
         }
 
         EndDrawing();

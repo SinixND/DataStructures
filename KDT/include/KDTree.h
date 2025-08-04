@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <raylib.h>
+#include <set>
 #include <vector>
 
 #define GUI
@@ -19,6 +20,17 @@ namespace snx
 
     template <size_t K>
     using KDPosition = std::array<float, K>;
+
+    struct NearestNeighbor
+    {
+        float distanceFactor{ 0 }; // "1 / (distance ^ 2)": The greater the distance, the smaller the factor
+        Id dataId{ 0 };
+
+        bool operator<( NearestNeighbor const& other ) const
+        {
+            return distanceFactor < other.distanceFactor;
+        }
+    };
 
     template <size_t K, typename Type>
     class KDT
@@ -37,12 +49,6 @@ namespace snx
         {
             KDPosition<K> position{};
             Type value{};
-        };
-
-        struct NearestNeighbor
-        {
-            float distanceFactor{ 0 }; // "1 / (distance ^ 2)": The greater the distance, the smaller the factor
-            Id dataId{ 0 };
         };
 
 #if defined( GUI )
@@ -98,18 +104,23 @@ namespace snx
         }
 
         //* https://youtu.be/Glp7THUpGow?si=p8M3jZT4WqrCgwju&t=267
-        Id getNearestNeighbor( KDPosition<2> const& targetPosition )
+        /// Find k nearest Neighbors from targetPosition
+        std::set<NearestNeighbor> findKNN(
+            size_t const k,
+            KDPosition<2> const& targetPosition
+        )
         {
-            NearestNeighbor nearestNeighbor{};
+            std::set<NearestNeighbor> nearestNeighbors{};
 
-            getNearestNeighbor(
-                nearestNeighbor,
+            getKNearestNeighbors(
+                k,
+                nearestNeighbors,
                 targetPosition,
                 root_,
                 0
             );
 
-            return nearestNeighbor.dataId;
+            return nearestNeighbors;
         }
 
     private:
@@ -196,8 +207,9 @@ namespace snx
                        + ( to[1] - from[1] ) * ( to[1] - from[1] ) );
         }
 
-        void updateNearestNeighbor(
-            NearestNeighbor& nearestNeighborIO,
+        void updateNearestNeighbors(
+            size_t const k,
+            std::set<NearestNeighbor>& nearestNeighborsIO,
             KDPosition<K> const& targetPosition,
             Id const node
         ) const
@@ -207,14 +219,23 @@ namespace snx
                 data_[nodes_[node].dataId].position
             ) };
 
-            if ( newDistanceFactor < nearestNeighborIO.distanceFactor )
+            if ( nearestNeighborsIO.size() < k )
             {
-                return;
+                nearestNeighborsIO.insert(
+                    { newDistanceFactor,
+                      nodes_[node].dataId }
+                );
             }
+            else if ( newDistanceFactor > nearestNeighborsIO.begin()->distanceFactor )
+            {
+                //* Erase lowest factor (greatest distance)
+                nearestNeighborsIO.erase( nearestNeighborsIO.begin() );
 
-            nearestNeighborIO.distanceFactor = newDistanceFactor;
-
-            nearestNeighborIO.dataId = nodes_[node].dataId;
+                nearestNeighborsIO.insert(
+                    { newDistanceFactor,
+                      nodes_[node].dataId }
+                );
+            }
         }
 
         bool isBranchCloser(
@@ -234,8 +255,9 @@ namespace snx
             return branchDistanceFactor > oldDistanceFactor;
         }
 
-        void getNearestNeighbor(
-            NearestNeighbor& nearestNeighborIO,
+        void getKNearestNeighbors(
+            size_t const k,
+            std::set<NearestNeighbor>& nearestNeighborsIO,
             KDPosition<2> const& targetPosition,
             Id const node,
             size_t const dimension
@@ -248,8 +270,9 @@ namespace snx
 
             if ( hasBranch( node, branch ) )
             {
-                getNearestNeighbor(
-                    nearestNeighborIO,
+                getKNearestNeighbors(
+                    k,
+                    nearestNeighborsIO,
                     targetPosition,
                     nodes_[node].branches[branch],
                     ( dimension + 1 ) % K
@@ -257,8 +280,9 @@ namespace snx
             }
 
             //* Deepest node found
-            updateNearestNeighbor(
-                nearestNeighborIO,
+            updateNearestNeighbors(
+                k,
+                nearestNeighborsIO,
                 targetPosition,
                 node
             );
@@ -273,14 +297,15 @@ namespace snx
                     node,
                     dimension,
                     targetPosition,
-                    nearestNeighborIO.distanceFactor
+                    nearestNeighborsIO.begin()->distanceFactor
                 )
             )
             {
                 branch = ( branch + 1 ) % 2;
 
-                getNearestNeighbor(
-                    nearestNeighborIO,
+                getKNearestNeighbors(
+                    k,
+                    nearestNeighborsIO,
                     targetPosition,
                     nodes_[node].branches[branch],
                     ( dimension + 1 ) % K
