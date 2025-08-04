@@ -1,12 +1,13 @@
 #include "PRQuadTree.h"
 #include "RNG.h"
 #include <raylib.h>
+#include <vector>
 
 #define GUI
 
-int constexpr SCREEN_WIDTH = 1024;
-int constexpr SCREEN_HEIGHT = 1024;
-int constexpr NODES = 2000;
+int constexpr SCREEN_WIDTH = 256;
+int constexpr SCREEN_HEIGHT = 256;
+size_t constexpr NODES = 100;
 int constexpr FPS_TARGET = 300;
 
 void renderNode(
@@ -85,7 +86,6 @@ int main()
     // tree.insert( { 180, 120 }, 4 );
 
     Vector2 target{ -1, -1 }; // Outside of screen
-    snx::Id nearestNeighbor{ 0 };
     size_t n{ 0 };
 
 #if defined( GUI )
@@ -114,21 +114,26 @@ int main()
         {
             target = GetMousePosition();
 
-            nearestNeighbor = tree.getNearestNeighbor(
+            auto kNearestNeighbors{ tree.findKNN(
+                5,
                 { target.x, target.y }
-            );
+            ) };
 
             DrawCircleV(
                 target,
                 4,
                 PURPLE
             );
-            DrawCircleV(
-                { tree.data_[nearestNeighbor].position.x,
-                  tree.data_[nearestNeighbor].position.y },
-                4,
-                GREEN
-            );
+
+            for ( auto nbr : kNearestNeighbors )
+            {
+                DrawCircleV(
+                    { tree.data_[nbr.dataId].position.x,
+                      tree.data_[nbr.dataId].position.y },
+                    4,
+                    GREEN
+                );
+            }
         }
 
         EndDrawing();

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <raylib.h>
+#include <set>
 #include <vector>
 
 #define GUI
@@ -15,7 +16,7 @@ namespace snx
     using Id = std::uint32_t;
     // using Id = size_t;
 
-    struct Int2
+    struct Quadrant
     {
         int x, y;
     };
@@ -29,6 +30,17 @@ namespace snx
     {
         Float2 center;
         Float2 halfSize;
+    };
+
+    struct NearestNeighbor
+    {
+        float distanceFactor{ 0 }; // "1 / (distance ^ 2)": The greater the factor, the smaller the distance (closer the neighbor)
+        Id dataId{ 0 };
+
+        bool operator<( NearestNeighbor const& other ) const
+        {
+            return distanceFactor < other.distanceFactor;
+        }
     };
 
     template <typename Type>
@@ -49,12 +61,6 @@ namespace snx
         {
             Float2 position{};
             Type value{};
-        };
-
-        struct NearestNeighbor
-        {
-            float distanceFactor{ 0 }; // "1 / (distance ^ 2)": The greater the distance, the smaller the factor
-            Id dataId{ 0 };
         };
 
 #if defined( GUI )
@@ -106,24 +112,29 @@ namespace snx
         }
 
         //* https://ericandrewlewis.github.io/how-a-quadtree-works/
-        Id getNearestNeighbor( Float2 const& targetPosition )
+        /// Find k nearest Neighbors from targetPosition
+        std::set<NearestNeighbor> findKNN(
+            size_t const k,
+            Float2 const& targetPosition
+        )
         {
-            NearestNeighbor nearestNeighbor{};
+            std::set<NearestNeighbor> nearestNeighbors{};
 
-            getNearestNeighbor(
-                nearestNeighbor,
+            getKNearestNeighbors(
+                k,
+                nearestNeighbors,
                 targetPosition,
                 root_,
                 bbox_
             );
 
-            return nearestNeighbor.dataId;
+            return nearestNeighbors;
         }
 
     private:
         bool hasQuadrant(
             Id const parentNode,
-            Int2 const quadrant
+            Quadrant const quadrant
         ) const
         {
             return nodes_[parentNode].quadrants[quadrant.y][quadrant.x];
@@ -142,12 +153,12 @@ namespace snx
             return nodes_[node].dataId;
         }
 
-        static Int2 getQuadrant(
+        static Quadrant getQuadrant(
             Float2 const parentBbox,
             Float2 const targetPosition
         )
         {
-            Int2 quadrant{ 0, 0 }; // NW
+            Quadrant quadrant{ 0, 0 }; // NW
 
             if ( targetPosition.x > parentBbox.x )
             {
@@ -164,7 +175,7 @@ namespace snx
 
         static AABB getQuadrantBox(
             AABB const& parentBbox,
-            Int2 const quadrant
+            Quadrant const quadrant
         )
         {
             return AABB{
@@ -177,7 +188,7 @@ namespace snx
 
         void insertNode(
             Id const node,
-            Int2 const quadrant
+            Quadrant const quadrant
         )
         {
             nodes_[node].quadrants[quadrant.y][quadrant.x] = nodes_.size();
@@ -195,7 +206,7 @@ namespace snx
 
         void insertToQuadrant(
             Id const node,
-            Int2 const newQuadrant,
+            Quadrant const newQuadrant,
             Data const data
         )
         {
@@ -209,7 +220,7 @@ namespace snx
 
         void moveToQuadrant(
             Id const node,
-            Int2 const newQuadrant
+            Quadrant const newQuadrant
         )
         {
             insertNode(
@@ -228,7 +239,7 @@ namespace snx
             AABB const& bbox
         )
         {
-            Int2 targetQuadrant{ getQuadrant(
+            Quadrant targetQuadrant{ getQuadrant(
                 bbox.center,
                 position
             ) };
@@ -265,7 +276,7 @@ namespace snx
 
             if ( hasData( node ) )
             {
-                Int2 newQuadrant{
+                Quadrant newQuadrant{
                     getQuadrant(
                         bbox.center,
                         data_[nodes_[node].dataId].position
@@ -323,9 +334,10 @@ namespace snx
         }
 
         void checkQuadrant(
-            NearestNeighbor& nearestNeighborIO,
+            size_t const k,
+            std::set<NearestNeighbor>& nearestNeighborsIO,
             Float2 const& targetPosition,
-            Int2 const& quadrant,
+            Quadrant const& quadrant,
             Id const parentNode,
             AABB const& quadrantBbox
         )
@@ -334,14 +346,16 @@ namespace snx
                      parentNode,
                      quadrant
                  )
-                 && isCloser(
-                     quadrantBbox,
-                     targetPosition,
-                     nearestNeighborIO.distanceFactor
-                 ) )
+                 && ( nearestNeighborsIO.size() < k
+                      || isCloser(
+                          quadrantBbox,
+                          targetPosition,
+                          nearestNeighborsIO.begin()->distanceFactor
+                      ) ) )
             {
-                getNearestNeighbor(
-                    nearestNeighborIO,
+                getKNearestNeighbors(
+                    k,
+                    nearestNeighborsIO,
                     targetPosition,
                     nodes_[parentNode].quadrants[quadrant.y][quadrant.x],
                     quadrantBbox
@@ -349,7 +363,10 @@ namespace snx
             }
         }
 
-        float getDistanceFactor( Float2 const& to, Float2 const& from ) const
+        float getDistanceFactor(
+            Float2 const& to,
+            Float2 const& from
+        ) const
         {
             return 1
                    / ( ( to.x - from.x ) * ( to.x - from.x )
@@ -357,7 +374,8 @@ namespace snx
         }
 
         void updateNearestNeighbor(
-            NearestNeighbor& nearestNeighborIO,
+            size_t const k,
+            std::set<NearestNeighbor>& nearestNeighborsIO,
             Float2 const& targetPosition,
             Id const leafNode
         ) const
@@ -367,17 +385,26 @@ namespace snx
                 data_[nodes_[leafNode].dataId].position
             ) };
 
-            if ( newDistanceFactor < nearestNeighborIO.distanceFactor )
+            if ( nearestNeighborsIO.size() < k )
             {
-                return;
+                nearestNeighborsIO.insert(
+                    { newDistanceFactor,
+                      nodes_[leafNode].dataId }
+                );
             }
+            else if ( newDistanceFactor > nearestNeighborsIO.begin()->distanceFactor )
+            {
+                //* Erase lowest factor (greatest distance)
+                nearestNeighborsIO.erase( nearestNeighborsIO.begin() );
 
-            nearestNeighborIO.distanceFactor = newDistanceFactor;
-
-            nearestNeighborIO.dataId = nodes_[leafNode].dataId;
+                nearestNeighborsIO.insert(
+                    { newDistanceFactor,
+                      nodes_[leafNode].dataId }
+                );
+            }
         }
 
-        static void cycleQuadrant( Int2& quadrant )
+        static void cycleQuadrant( Quadrant& quadrant )
         {
             Float2 tempQuadrant{
                 1.f * quadrant.x,
@@ -397,8 +424,9 @@ namespace snx
         }
 
         void checkSiblings(
-            NearestNeighbor& nearestNeighborIO,
-            Int2 const& firstQuadrantQuadrant,
+            size_t const k,
+            std::set<NearestNeighbor>& nearestNeighborsIO,
+            Quadrant const& firstQuadrantQuadrant,
             Id const parentNode,
             AABB const& parentBbox,
             Float2 const& targetPosition
@@ -406,13 +434,14 @@ namespace snx
         {
             //* Check remaining siblings if their
             //* box can be closer than nearestNeighbor
-            Int2 quadrant{ firstQuadrantQuadrant };
+            Quadrant quadrant{ firstQuadrantQuadrant };
 
             for ( int i{ 0 }; i < 3; ++i )
             {
                 cycleQuadrant( quadrant );
                 checkQuadrant(
-                    nearestNeighborIO,
+                    k,
+                    nearestNeighborsIO,
                     targetPosition,
                     quadrant,
                     parentNode,
@@ -424,15 +453,16 @@ namespace snx
             }
         }
 
-        void getNearestNeighbor(
-            NearestNeighbor& nearestNeighborIO,
+        void getKNearestNeighbors(
+            size_t const k,
+            std::set<NearestNeighbor>& nearestNeighborsIO,
             Float2 const& targetPosition,
             Id const node,
             AABB const& nodeBbox
         )
         {
             //* Find quadrant in direction of target
-            Int2 targetQuadrant{
+            Quadrant targetQuadrant{
                 getQuadrant(
                     nodeBbox.center,
                     targetPosition
@@ -441,7 +471,8 @@ namespace snx
 
             //* Check first quadrant at targetQuadrant
             checkQuadrant(
-                nearestNeighborIO,
+                k,
+                nearestNeighborsIO,
                 targetPosition,
                 targetQuadrant,
                 node,
@@ -456,14 +487,16 @@ namespace snx
             if ( hasData( node ) )
             {
                 updateNearestNeighbor(
-                    nearestNeighborIO,
+                    k,
+                    nearestNeighborsIO,
                     targetPosition,
                     node
                 );
             }
 
             checkSiblings(
-                nearestNeighborIO,
+                k,
+                nearestNeighborsIO,
                 targetQuadrant,
                 node,
                 nodeBbox,
